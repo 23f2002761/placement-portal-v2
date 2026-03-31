@@ -1,0 +1,24 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# SQLite
+*.db
+
+# Environment
+.env
+
+# Redis
+dump.rdb
+
+# VSCode
+.vscode/
+
+# Node
+node_modules/
+
+# Mac
+.DS_Store
