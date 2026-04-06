@@ -69,6 +69,7 @@ class JobPosition(db.Model):
     placements = db.relationship('Placement', backref='job')
 
     eligibility_branch = db.Column(db.String(100))
+    is_approved = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Application(db.Model):

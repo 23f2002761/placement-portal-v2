@@ -79,6 +79,9 @@ def login():
     if not check_password_hash(user.password_hash, password):
         return jsonify({"error": "Incorrect Password"}), 401
 
+    if not user.is_active:
+        return jsonify({"error": "Account is deactivated"}), 403
+
     if user.role == 'company':
         if not user.is_approved:
             return jsonify({"error": "Company not approved"}), 403

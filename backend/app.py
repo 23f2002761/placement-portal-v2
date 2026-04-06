@@ -2,7 +2,8 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from datetime import datetime
-from utils.decorators import admin_required
+from routes.admin import admin_bp
+# from utils.decorators import admin_required
 
 app = Flask(__name__)
 
@@ -20,6 +21,7 @@ from models.models import User, Student, Company, JobPosition, Application, Plac
 from routes.auth import auth_bp
 
 app.register_blueprint(auth_bp, url_prefix='/api')
+app.register_blueprint(admin_bp, url_prefix='/api')
 
 with app.app_context():
     db.create_all()
@@ -28,10 +30,10 @@ with app.app_context():
 def home():
     return "Placement Portal Backend Running"
 
-@app.route('/admin-test')
-@admin_required
-def admin_test():
-    return {"message": "Admin access granted"}
+# @app.route('/admin-test')
+# @admin_required
+# def admin_test():
+#     return {"message": "Admin access granted"}
 
 if __name__ == '__main__':
     app.run(debug=True)
