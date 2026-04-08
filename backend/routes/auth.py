@@ -2,9 +2,11 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token
 from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
-from models.models import User
+from models.models import User,Company,Student
 
 auth_bp = Blueprint('auth', __name__)
+
+from models.models import Student
 
 @auth_bp.route('/register/student', methods=['POST'])
 def register_student():
@@ -12,15 +14,17 @@ def register_student():
 
     email = data.get('email')
     password = data.get('password')
+    name = data.get('name')  # add basic profile field
 
-    if not email or not password:
-        return jsonify({"error": "Email and password required"}), 400
+    if not email or not password or not name:
+        return jsonify({"error": "Email, password and name required"}), 400
 
     existing_user = User.query.filter_by(email=email).first()
     if existing_user:
         return jsonify({"error": "User already exists"}), 400
 
     hashed_password = generate_password_hash(password)
+
 
     new_user = User(
         email=email,
@@ -30,9 +34,19 @@ def register_student():
     )
 
     db.session.add(new_user)
+    db.session.flush()  
+
+    
+    new_student = Student(
+        user_id=new_user.id,
+        name=name
+    )
+
+    db.session.add(new_student)
     db.session.commit()
 
     return jsonify({"message": "Student registered successfully"}), 201
+
 
 @auth_bp.route('/register/company', methods=['POST'])
 def register_company():
@@ -40,9 +54,10 @@ def register_company():
 
     email = data.get('email')
     password = data.get('password')
+    name = data.get('name')
 
-    if not email or not password:
-        return jsonify({"error": "Email and password required"}), 400
+    if not email or not password or not name:
+        return jsonify({"error": "Email, password and company name required"}), 400
 
     existing_user = User.query.filter_by(email=email).first()
     if existing_user:
@@ -54,9 +69,18 @@ def register_company():
         email=email,
         password_hash=hashed_password,
         role='company',
+        is_approved=False
     )
 
     db.session.add(new_user)
+    db.session.flush()  
+
+    new_company = Company(
+        user_id=new_user.id,
+        company_name=name
+    )
+
+    db.session.add(new_company)
     db.session.commit()
 
     return jsonify({"message": "Company registered. Awaiting approval"}), 201

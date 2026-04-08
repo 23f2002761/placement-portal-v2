@@ -5,7 +5,7 @@ from utils.decorators import admin_required
 
 admin_bp = Blueprint('admin', __name__)
 
-# 1. Dashboard Stats
+# 1. Dashboard stats
 @admin_bp.route('/admin/dashboard', methods=['GET'])
 @admin_required
 def dashboard():
@@ -14,13 +14,26 @@ def dashboard():
     total_jobs = JobPosition.query.count()
     total_applications = Application.query.count()
 
+    companies = Company.query.all()
+
+    company_list = []
+    for company in companies:
+        company_list.append({
+            "id": company.id,
+            "company_name": company.company_name,
+            "email": company.user.email,
+            "industry": company.industry,
+            "location": company.location,
+            "is_approved": company.user.is_approved
+        })
+
     return jsonify({
         "total_students": total_students,
         "total_companies": total_companies,
         "total_jobs": total_jobs,
-        "total_applications": total_applications
+        "total_applications": total_applications,
+        "companies": company_list
     })
-
 
 # 2. Approve Company
 @admin_bp.route('/admin/approve-company/<int:company_id>', methods=['PUT'])
@@ -51,17 +64,31 @@ def remove_company(company_id):
 
 
 # 4. Approve Job
-@admin_bp.route('/admin/approve-job/<int:job_id>', methods=['PUT'])
+@admin_bp.route('/admin/job/<int:job_id>/status', methods=['PUT'])
 @admin_required
-def approve_job(job_id):
+def update_job_status(job_id):
     job = JobPosition.query.get(job_id)
+
     if not job:
         return jsonify({"message": "Job not found"}), 404
 
-    job.is_approved = True
+    data = request.get_json()
+    new_status = data.get("status")
+
+    # only admin-controlled states
+    allowed = ["approved", "rejected"]
+
+    if new_status not in allowed:
+        return jsonify({"error": "Invalid status"}), 400
+
+    # prevent re-approving or re-rejecting
+    if job.status != "pending":
+        return jsonify({"error": "Job already reviewed"}), 400
+
+    job.status = new_status
     db.session.commit()
 
-    return jsonify({"message": "Job approved"})
+    return jsonify({"message": f"Job {new_status} successfully"})
 
 
 # 5. Remove Job

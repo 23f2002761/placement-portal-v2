@@ -63,13 +63,15 @@ class JobPosition(db.Model):
     salary = db.Column(db.Float)
     eligibility_cgpa = db.Column(db.Float)
     deadline = db.Column(db.DateTime)
-    status = db.Column(db.String(20), default="open")
+    status = db.Column(db.String(20), default="pending")
+    skills = db.Column(db.String(255))
+    experience = db.Column(db.String(100))
+    benefits = db.Column(db.String(255))
 
     applications = db.relationship('Application', backref='job', cascade="all, delete-orphan")
     placements = db.relationship('Placement', backref='job')
 
     eligibility_branch = db.Column(db.String(100))
-    is_approved = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Application(db.Model):
@@ -83,6 +85,10 @@ class Application(db.Model):
     job_id = db.Column(db.Integer, db.ForeignKey('job_positions.id'), nullable=False)
     status = db.Column(db.String(50), default="applied")
     applied_on = db.Column(db.DateTime, default=datetime.utcnow)
+    feedback = db.Column(db.Text)
+    interview_date = db.Column(db.String(100))  # keep simple for now
+    interview_location = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Placement(db.Model):
     __tablename__ = 'placements'
