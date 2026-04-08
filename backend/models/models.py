@@ -31,6 +31,8 @@ class Student(db.Model):
     resume_path = db.Column(db.String(255))
     year = db.Column(db.Integer)
     cgpa = db.Column(db.Float)
+    education = db.Column(db.String(255))
+    experience = db.Column(db.Text)
 
     placements = db.relationship('Placement', backref='student')
     applications = db.relationship('Application', backref='student', cascade="all, delete-orphan")
@@ -88,6 +90,7 @@ class Application(db.Model):
     feedback = db.Column(db.Text)
     interview_date = db.Column(db.String(100))  # keep simple for now
     interview_location = db.Column(db.String(255))
+    offer_letter_path = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Placement(db.Model):

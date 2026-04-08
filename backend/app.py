@@ -4,6 +4,7 @@ from flask_jwt_extended import JWTManager
 from datetime import datetime
 from routes.admin import admin_bp
 from routes.company import company_bp
+from routes.student import student_bp
 # from utils.decorators import admin_required
 
 app = Flask(__name__)
@@ -24,6 +25,7 @@ from routes.auth import auth_bp
 app.register_blueprint(auth_bp, url_prefix='/api')
 app.register_blueprint(admin_bp, url_prefix='/api')
 app.register_blueprint(company_bp, url_prefix='/api')
+app.register_blueprint(student_bp, url_prefix='/api')
 
 with app.app_context():
     db.create_all()
