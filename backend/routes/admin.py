@@ -57,7 +57,9 @@ def remove_company(company_id):
     if not company:
         return jsonify({"message": "Company not found"}), 404
 
+    user = company.user
     db.session.delete(company)
+    db.session.delete(user)
     db.session.commit()
 
     return jsonify({"message": "Company removed"})
@@ -144,6 +146,7 @@ def search_students():
     for s in students:
         result.append({
             "id": s.id,
+            "user_id": s.user.id, 
             "name": s.name,
             "email": s.user.email,
             "phone":s.phone
@@ -195,15 +198,22 @@ def get_all_jobs():
 @admin_bp.route('/admin/applications', methods=['GET'])
 @admin_required
 def get_all_applications():
-    applications = Application.query.all()
+    applications = db.session.query(Application, Student, JobPosition, Company)\
+        .join(Student, Application.student_id == Student.id)\
+        .join(JobPosition, Application.job_id == JobPosition.id)\
+        .join(Company, JobPosition.company_id == Company.id)\
+        .all()
 
     result = []
-    for a in applications:
+
+    for app, student, job, company in applications:
         result.append({
-            "id": a.id,
-            "student_id": a.student_id,
-            "job_id": a.job_id,
-            "status": a.status
+            "application_id": app.id,
+            "student_name": student.name,
+            "student_email": student.user.email,
+            "company_name": company.company_name,
+            "job_title": job.title,
+            "status": app.status
         })
 
     return jsonify(result)

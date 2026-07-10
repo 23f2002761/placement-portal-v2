@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from extensions import db
-from models.models import User, Student, Company, JobPosition, Application
+from models.models import User, Student, Company, JobPosition, Application,Placement
 from datetime import datetime
 from utils.decorators import company_required
 
@@ -15,7 +15,7 @@ def get_current_company():
     if not user_id:
         return None
 
-    return Company.query.filter_by(user_id=user_id).first()
+    return Company.query.filter_by(user_id=int(user_id)).first()
 
 
 # ✅ 1. Dashboard
@@ -57,8 +57,7 @@ def dashboard():
             "salary": job.salary,
             "status": job.status,
             "created_at": job.created_at.strftime("%Y-%m-%d") if job.created_at else None,
-            "applicant_count": applicant_count ,
-            "status":job.status  # ✅ useful for UI
+            "applicant_count": applicant_count 
         })
 
 
@@ -75,14 +74,14 @@ def dashboard():
     })
 
 
-# ✅ 2. Create Job (FULL)
+# ✅ 2. Create Job 
 @company_bp.route('/company/create-job', methods=['POST'])
 @jwt_required()
 @company_required
 def create_job():
     company = get_current_company()
 
-    if not company or not company.user.is_approved:
+    if not company or not company.user.is_approved or not company.user.is_active:
         return jsonify({"error": "Company not approved"}), 403
 
     data = request.get_json() or {}
@@ -111,45 +110,7 @@ def create_job():
 
 
 
-# ✅ 3. Get Applicants
-@company_bp.route('/company/job/<int:job_id>/applications', methods=['GET'])
-@jwt_required()
-@company_required
-def get_applications(job_id):
-    company = get_current_company()
-
-    job = JobPosition.query.filter_by(id=job_id, company_id=company.id).first()
-
-    if not job:
-        return jsonify({"error": "Unauthorized or job not found"}), 404
-    
-    if job.status != "approved":
-        return jsonify({"error": "Job not active"}), 400
-
-    applications = Application.query.filter_by(job_id=job_id).all()
-
-    result = []
-    for app in applications:
-        student = Student.query.filter_by(id=app.student_id).first()
-        if not student:
-            continue
-
-        result.append({
-            "application_id": app.id,
-            "status": app.status,
-            "feedback": app.feedback,
-            "interview_date": str(app.interview_date) if app.interview_date else None,
-            "student": {
-                "name": student.name,
-                "branch": student.branch,
-                "cgpa": student.cgpa
-            }
-        })
-
-    return jsonify(result)
-
-
-# ✅ 4. Update Application Status + Feedback
+# ✅ 3. Update application status
 @company_bp.route('/company/application/<int:app_id>/status', methods=['PUT'])
 @jwt_required()
 @company_required
@@ -157,7 +118,6 @@ def update_application_status(app_id):
     company = get_current_company()
 
     app = Application.query.get(app_id)
-
     if not app:
         return jsonify({"error": "Application not found"}), 404
 
@@ -165,15 +125,14 @@ def update_application_status(app_id):
 
     if job.company_id != company.id:
         return jsonify({"error": "Unauthorized"}), 403
-    
+
     if job.status != "approved":
         return jsonify({"error": "Job not active"}), 400
 
     data = request.get_json() or {}
     new_status = data.get("status")
-    feedback = data.get("feedback")
 
-    allowed = ["shortlisted", "interview", "selected", "rejected"]
+    allowed = ["applied", "shortlisted", "interview", "selected", "rejected", "placed"]
 
     if new_status not in allowed:
         return jsonify({"error": "Invalid status"}), 400
@@ -182,7 +141,8 @@ def update_application_status(app_id):
         "applied": ["shortlisted", "rejected"],
         "shortlisted": ["interview", "rejected"],
         "interview": ["selected", "rejected"],
-        "selected": [],
+        "selected": ["placed"],
+        "placed": [],
         "rejected": []
     }
 
@@ -194,13 +154,28 @@ def update_application_status(app_id):
         }), 400
 
     app.status = new_status
-    app.feedback = feedback
+
+    if new_status == "placed":
+        existing = Placement.query.filter_by(
+            student_id=app.student_id,
+            job_id=app.job_id
+        ).first()
+
+        if not existing:
+            placement = Placement(
+                student_id=app.student_id,
+                company_id=job.company_id,
+                job_id=job.id,
+                salary=job.salary,
+                joining_date=datetime.utcnow()
+            )
+            db.session.add(placement)
 
     db.session.commit()
 
     return jsonify({"message": "Application updated successfully"})
 
-# ✅ 5. Close Job
+# ✅ 4. Close Job
 @company_bp.route('/company/job/<int:job_id>/close', methods=['PUT'])
 @jwt_required()
 @company_required
@@ -220,7 +195,7 @@ def close_job(job_id):
 
     return jsonify({"message": "Job closed successfully"})
 
-# ✅ 6. Schedule Interview
+# ✅ 5. Schedule Interview
 @company_bp.route('/company/application/<int:app_id>/schedule', methods=['PUT'])
 @jwt_required()
 @company_required
@@ -252,3 +227,30 @@ def schedule_interview(app_id):
 
     return jsonify({"message": "Interview scheduled"})
 
+
+# ✅ 6. application list
+@company_bp.route('/company/job/<int:job_id>/applications', methods=['GET'])
+@jwt_required()
+@company_required
+def get_applications(job_id):
+    company = get_current_company()
+
+    job = JobPosition.query.filter_by(id=job_id, company_id=company.id).first()
+
+    if not job:
+        return jsonify({"error": "Unauthorized or job not found"}), 404
+
+    if job.status != "approved":
+        return jsonify({"error": "Job not active"}), 400
+
+    applications = Application.query.filter_by(job_id=job.id).all()
+
+    result = []
+    for app in applications:
+        result.append({
+            "application_id": app.id,
+            "student_name": app.student.name,
+            "status": app.status
+        })
+
+    return jsonify(result)

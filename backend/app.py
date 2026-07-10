@@ -5,6 +5,7 @@ from datetime import datetime
 from routes.admin import admin_bp
 from routes.company import company_bp
 from routes.student import student_bp
+from flask_cors import CORS
 # from utils.decorators import admin_required
 
 app = Flask(__name__)
@@ -18,9 +19,12 @@ from extensions import db, jwt
 db.init_app(app)
 jwt.init_app(app)
 
+CORS(app) 
+
 from models.models import User, Student, Company, JobPosition, Application, Placement
 
 from routes.auth import auth_bp
+ 
 
 app.register_blueprint(auth_bp, url_prefix='/api')
 app.register_blueprint(admin_bp, url_prefix='/api')
@@ -33,6 +37,8 @@ with app.app_context():
 @app.route('/')
 def home():
     return "Placement Portal Backend Running"
+
+
 
 # @app.route('/admin-test')
 # @admin_required

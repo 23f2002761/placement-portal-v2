@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from extensions import db
-from models.models import Student, User, JobPosition, Application, Company
+from models.models import Student, User, JobPosition, Application, Company,Placement
 from utils.decorators import student_required
 from flask import send_file
 import os
@@ -251,7 +251,7 @@ def download_offer_letter(app_id):
     if not app:
         return jsonify({"error": "Application not found"}), 404
 
-    if app.status != "selected":
+    if app.status not in ["selected", "placed"]:
         return jsonify({"error": "Offer not available yet"}), 403
 
     if not app.offer_letter_path:
@@ -261,3 +261,27 @@ def download_offer_letter(app_id):
         return jsonify({"error": "File missing"}), 404
 
     return send_file(app.offer_letter_path, as_attachment=True)
+
+
+# ✅ 9. Placements
+@student_bp.route('/student/placements', methods=['GET'])
+@jwt_required()
+@student_required
+def get_placements():
+    student = get_current_student()
+
+    if not student:
+        return jsonify({"error": "Student not found"}), 404
+
+    placements = Placement.query.filter_by(student_id=student.id).all()
+
+    result = []
+    for p in placements:
+        result.append({
+            "company_name": p.company.company_name,
+            "job_title": p.job.title,
+            "salary": p.salary,
+            "joining_date": p.joining_date.strftime("%Y-%m-%d") if p.joining_date else None
+        })
+
+    return jsonify(result)

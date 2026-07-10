@@ -6,7 +6,6 @@ from models.models import User,Company,Student
 
 auth_bp = Blueprint('auth', __name__)
 
-from models.models import Student
 
 @auth_bp.route('/register/student', methods=['POST'])
 def register_student():
