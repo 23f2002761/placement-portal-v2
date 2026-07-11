@@ -1,9 +1,10 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from extensions import db
+from extensions import db ,cache
 from models.models import Student, User, JobPosition, Application, Company,Placement
 from utils.decorators import student_required
 from flask import send_file
+# from tasks.export_tasks import export_student_applications
 import os
 
 student_bp = Blueprint('student', __name__)
@@ -88,6 +89,7 @@ def update_profile():
     student.resume_path = data.get("resume_path", student.resume_path)
 
     db.session.commit()
+    cache.clear()
 
     return jsonify({"message": "Profile updated successfully"})
 
@@ -96,6 +98,7 @@ def update_profile():
 @student_bp.route('/student/jobs', methods=['GET'])
 @jwt_required()
 @student_required
+@cache.cached(timeout=300)
 def get_jobs():
     jobs = JobPosition.query.filter_by(status="approved").all()
 
@@ -285,3 +288,51 @@ def get_placements():
         })
 
     return jsonify(result)
+
+# ✅ 10.Export Applications CSV
+@student_bp.route('/student/export', methods=['POST'])
+@jwt_required()
+@student_required
+def export_csv():
+
+    user_id = get_jwt_identity()
+
+    student = Student.query.filter_by(user_id=user_id).first()
+
+    if not student:
+        return jsonify({"error": "Student not found"}), 404
+    
+    from tasks.export_tasks import export_student_applications
+
+    export_student_applications.delay(student.id)
+
+    return jsonify({
+        "message": "Export Started"
+    }), 202
+
+# ✅ 11.Download Exported CSV
+@student_bp.route('/student/download-export', methods=['GET'])
+@jwt_required()
+@student_required
+def download_export():
+
+    user_id = get_jwt_identity()
+
+    student = Student.query.filter_by(user_id=user_id).first()
+
+    if not student:
+        return jsonify({"error": "Student not found"}), 404
+
+    filename = f"exports/student_{student.id}_applications.csv"
+
+    import os
+
+    if not os.path.exists(filename):
+        return jsonify({
+            "error": "Export file not found. Please generate the export first."
+        }), 404
+
+    return send_file(
+        filename,
+        as_attachment=True
+    )

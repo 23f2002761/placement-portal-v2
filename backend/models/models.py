@@ -88,8 +88,9 @@ class Application(db.Model):
     status = db.Column(db.String(50), default="applied")
     applied_on = db.Column(db.DateTime, default=datetime.utcnow)
     feedback = db.Column(db.Text)
-    interview_date = db.Column(db.String(100))  # keep simple for now
+    interview_date = db.Column(db.String(100))  
     interview_location = db.Column(db.String(255))
+    interview_mode = db.Column(db.String(50))
     offer_letter_path = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

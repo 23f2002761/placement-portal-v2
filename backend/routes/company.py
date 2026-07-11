@@ -222,6 +222,7 @@ def schedule_interview(app_id):
 
     app.interview_date = data.get("interview_date")
     app.interview_location = data.get("interview_location")
+    app.interview_mode = data.get("interview_mode")
     app.status = "interview"
     db.session.commit()
 

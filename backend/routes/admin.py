@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from extensions import db
+from extensions import db, cache
 from models.models import User, Student, Company, JobPosition, Application
 from utils.decorators import admin_required
 
@@ -8,6 +8,7 @@ admin_bp = Blueprint('admin', __name__)
 # 1. Dashboard stats
 @admin_bp.route('/admin/dashboard', methods=['GET'])
 @admin_required
+@cache.cached(timeout=60)
 def dashboard():
     total_students = Student.query.count()
     total_companies = Company.query.count()
@@ -45,6 +46,7 @@ def approve_company(company_id):
 
     company.user.is_approved = True
     db.session.commit()
+    cache.clear()
 
     return jsonify({"message": "Company approved"})
 
@@ -89,6 +91,7 @@ def update_job_status(job_id):
 
     job.status = new_status
     db.session.commit()
+    cache.delete("flask_cache_view//api/student/jobs")
 
     return jsonify({"message": f"Job {new_status} successfully"})
 
@@ -110,6 +113,7 @@ def remove_job(job_id):
 # 6. Search Companies
 @admin_bp.route('/admin/search/companies', methods=['GET'])
 @admin_required
+@cache.cached(timeout=300, query_string=True)
 def search_companies():
     query = request.args.get('q', '')
 
@@ -132,6 +136,7 @@ def search_companies():
 # 7. Search Students
 @admin_bp.route('/admin/search/students', methods=['GET'])
 @admin_required
+@cache.cached(timeout=300, query_string=True)
 def search_students():
     query = request.args.get('q', '')
 
